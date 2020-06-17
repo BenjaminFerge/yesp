@@ -43,3 +43,18 @@
 		     (version version))
 	obj
       (format stream "~a (~a): ~%~{  ~a~%~}" name version events))))
+
+;; TODO: Load from config or user input
+(defparameter *db-path* "~/.yesp.d/db.dat")
+(defparameter *db* (make-hash-table))
+
+;; TODO: Check version
+(defmethod push-event ((s event-stream) (e event))
+  (push e (gethash (name s) *db*)))
+
+(defun save-db ()
+  (ensure-directories-exist *db-path*)
+  (cl-store:store *db* *db-path*))
+
+(defun load-db ()
+  (setf *db* (cl-store:restore *db-path*)))
