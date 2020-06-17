@@ -14,7 +14,7 @@
     :initarg :version
     :accessor version
     :initform 0)))
-
+#||
 (defmethod print-object ((obj event) stream)
   (print-unreadable-object (obj stream :type t)
     (with-accessors ((action action)
@@ -22,7 +22,7 @@
 		     (version version))
 	obj
       (format stream "~a (~a): ~a" action version payload))))
-
+||#
 (defclass event-stream ()
   ((name
     :initarg :name
@@ -35,7 +35,7 @@
     :initarg :version
     :accessor version
     :initform 0)))
-
+#||
 (defmethod print-object ((obj event-stream) stream)
   (print-unreadable-object (obj stream :type t)
     (with-accessors ((name name)
@@ -43,3 +43,28 @@
 		     (version version))
 	obj
       (format stream "~a (~a): ~%~{  ~a~%~}" name version events))))
+
+(defparameter *db-path* "~/yesp.lisp")
+(defparameter *db* (make-hash-table))
+||#
+
+(defparameter *db* (make-hash-table))
+(defparameter *db-path* "~/yesp.lisp")
+
+;; TODO: Check version
+(defmethod push-event ((s event-stream) (e event))
+  (push e (gethash (name s) *db*)))
+
+;; cl-store: https://common-lisp.net/project/cl-store/
+(defun save-db ()
+  (with-open-file (out *db-path*
+		       :direction :output
+		       :if-exists :append
+		       :if-does-not-exist :create)
+    (with-standard-io-syntax
+      (print *db* out))))
+
+(defun load-db ()
+  (with-open-file (in *db-path*)
+    (with-standard-io-syntax
+      (setf *db* (read in)))))
