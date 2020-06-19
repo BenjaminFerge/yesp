@@ -2,60 +2,42 @@
 
 (in-package #:yesp)
 
-(defclass event ()
-  ((action
-    :initarg :action
-    :accessor action)
-   (payload
-    :initarg :payload
-    :accessor payload
-    :initform nil)
-   (version
-    :initarg :version
-    :accessor version
-    :initform 0)))
-#||
-(defmethod print-object ((obj event) stream)
-  (print-unreadable-object (obj stream :type t)
-    (with-accessors ((action action)
-		     (payload payload)
-		     (version version))
-	obj
-      (format stream "~a (~a): ~a" action version payload))))
-||#
-(defclass event-stream ()
-  ((name
-    :initarg :name
-    :accessor name)
-   (events
-    :initarg :events
-    :initform nil
-    :accessor events)
-   (version
-    :initarg :version
-    :accessor version
-    :initform 0)))
-#||
-(defmethod print-object ((obj event-stream) stream)
-  (print-unreadable-object (obj stream :type t)
-    (with-accessors ((name name)
-		     (events events)
-		     (version version))
-	obj
-      (format stream "~a (~a): ~%~{  ~a~%~}" name version events))))
-
-(defparameter *db-path* "~/yesp.lisp")
 (defparameter *db* (make-hash-table))
-||#
+(defparameter *db-dir* (make-pathname
+			:directory '(:absolute "~" ".yesp.d" "streams")))
 
-(defparameter *db* (make-hash-table))
-(defparameter *db-path* "~/yesp.lisp")
+(defun make-event (action payload version)
+  (list :action action :payload payload :version version))
 
-;; TODO: Check version
-(defmethod push-event ((s event-stream) (e event))
-  (push e (gethash (name s) *db*)))
+(defun make-event-stream (name events)
+  (list :name name :events events))
 
-;; cl-store: https://common-lisp.net/project/cl-store/
+(defun push-event (event stream)
+  (push event (getf stream :events)))
+
+(defun event-stream-path (name)
+  (make-pathname
+   :defaults *db-dir*
+   :name name
+   :type "lisp"))
+
+(defun save-event-stream (event-stream)
+  (with-open-file (out (event-stream-path (getf event-stream :name))
+		       :direction :output
+		       :if-exists :append
+		       :if-does-not-exist :create)
+    (with-standard-io-syntax
+      (dolist (item (getf event-stream :events)) (print item out)))))
+
+(defun event-stream-files ()
+  (directory (make-pathname
+	      :defaults *db-dir*
+	      :name :wild
+	      :type "lisp")))
+
+(defun load-event-stream (name)
+  name)
+
 (defun save-db ()
   (with-open-file (out *db-path*
 		       :direction :output
@@ -65,6 +47,7 @@
       (print *db* out))))
 
 (defun load-db ()
-  (with-open-file (in *db-path*)
-    (with-standard-io-syntax
-      (setf *db* (read in)))))
+  (dolist (f (event-stream-files))
+    (with-open-file (in f)
+      (with-standard-io-syntax
+	(print (read in))))))
