@@ -3,8 +3,10 @@
 (in-package #:yesp)
 
 (defparameter *db* (make-hash-table))
-(defparameter *db-dir* (make-pathname
-			:directory '(:absolute "~" ".yesp.d" "streams")))
+(defparameter *db-dir*
+  (make-pathname
+   :directory `(,@(pathname-directory (user-homedir-pathname))
+		  ".yesp.d" "streams")))
 
 (defun make-event (action payload version)
   (list :action action :payload payload :version version))
