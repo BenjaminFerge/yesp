@@ -1,4 +1,5 @@
 ;;;; package.lisp
 
 (defpackage #:yesp
-  (:use #:cl))
+  (:use #:cl
+	#:com.gigamonkeys.pathnames))

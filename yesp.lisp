@@ -32,10 +32,7 @@
       (dolist (item (getf event-stream :events)) (print item out)))))
 
 (defun event-stream-files ()
-  (directory (make-pathname
-	      :defaults *db-dir*
-	      :name :wild
-	      :type "lisp")))
+  (list-directory *db-dir*))
 
 (defun load-event-stream (name)
   name)
