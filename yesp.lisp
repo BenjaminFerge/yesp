@@ -67,3 +67,12 @@
 	  (loop for key being the hash-keys of object
 	     using (hash-value value)
 	     collect (list key value))))
+
+
+;; server
+(defvar *server* (jsonrpc:make-server))
+
+(defun start-server ()
+  (jsonrpc:expose *server* "sum" (lambda (args) (print "GOT REQUEST") (reduce #'+ args)))
+  (jsonrpc:server-listen *server* :port 50879 :mode :tcp))
+
