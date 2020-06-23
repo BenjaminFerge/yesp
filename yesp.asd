@@ -7,6 +7,6 @@
   :version "0.0.1"
   :serial t
   :depends-on (#:pcl-pathnames
-	       #:jsonrpc)
+	       #:s-xml-rpc)
   :components ((:file "package")
                (:file "yesp")))

@@ -2,4 +2,5 @@
 
 (defpackage #:yesp
   (:use #:cl
-	#:com.gigamonkeys.pathnames))
+	#:com.gigamonkeys.pathnames
+	#:s-xml-rpc))

@@ -68,11 +68,17 @@
 	     using (hash-value value)
 	     collect (list key value))))
 
+(defvar *xml-server*)
 
-;; server
-(defvar *server* (jsonrpc:make-server))
+(defun start-rpc-server ()
+  (setq *xml-server* (s-xml-rpc:start-xml-rpc-server :port 8080)))
 
-(defun start-server ()
-  (jsonrpc:expose *server* "sum" (lambda (args) (print "GOT REQUEST") (reduce #'+ args)))
-  (jsonrpc:server-listen *server* :port 50879 :mode :tcp))
+(defun stop-rpc-server ()
+  (stop-server *xml-server*))
+
+(defun s-xml-rpc-exports::|lisp.GCD| (m n)
+  (gcd m n))
+
+(defun s-xml-rpc-exports::|lisp.getTime| ()
+  (multiple-value-list (get-decoded-time)))
 
