@@ -8,14 +8,17 @@
    :directory `(,@(pathname-directory (user-homedir-pathname))
 		  ".yesp.d" "streams")))
 
-(defun make-event (action payload version)
-  (list :action action :payload payload :version version))
+(defstruct event
+  action
+  payload
+  version)
 
-(defun make-event-stream (name events)
-  (list :name name :events events))
+(defstruct event-stream
+  name
+  events)
 
 (defun push-event (event stream)
-  (push event (getf stream :events)))
+  (push event (event-stream-events stream)))
 
 (defun event-stream-path (name)
   (make-pathname
@@ -24,12 +27,12 @@
    :type "lisp"))
 
 (defun save-event-stream (event-stream)
-  (with-open-file (out (event-stream-path (getf event-stream :name))
+  (with-open-file (out (event-stream-path (event-stream-name event-stream))
 		       :direction :output
 		       :if-exists :append
 		       :if-does-not-exist :create)
     (with-standard-io-syntax
-      (dolist (item (getf event-stream :events)) (prin1 item out)))))
+      (dolist (item (event-stream-events event-stream)) (prin1 item out)))))
 
 (defun event-stream-files ()
   (list-directory *db-dir*))
@@ -41,12 +44,12 @@
        collect form)))
 
 (defun load-event-stream (event-stream)
-  (setf (gethash (getf event-stream :name) *db*) event-stream))
+  (setf (gethash (event-stream-name event-stream) *db*) event-stream))
 
 (defun event-stream-from-file (path)
   (make-event-stream
-   (read-from-string (pathname-name path))
-   (read-event-stream-file path)))
+   :name (read-from-string (pathname-name path))
+   :events (read-event-stream-file path)))
 
 (defun load-event-stream-from-file (path)
   (load-event-stream (event-stream-from-file path)))
