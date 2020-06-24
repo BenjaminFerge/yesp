@@ -25,9 +25,13 @@
 (defmethod version ((stream event-stream))
   (event-version (car (last (events stream)))))
 
-;; TODO: Check version
-(defmethod push-event ((s event-stream) (e event))
-  (push e (slot-value s 'events)))
+(defmethod valid-p ((e event) (s event-stream))
+  (= (version s) (1- (event-version e))))
+
+(defmethod push-event ((e event) (s event-stream))
+  (unless (valid-p e s)
+    (error (format nil "Event version mismatch!~%Expected: ~a, got: ~a" (1+ (version s)) (event-version e))))
+  (setf (slot-value s 'events) (nreverse (push e (slot-value s 'events)))))
 
 (defun event-stream-path (name)
   (make-pathname
@@ -38,7 +42,7 @@
 (defun save-event-stream (event-stream)
   (with-open-file (out (event-stream-path (name event-stream))
 		       :direction :output
-		       :if-exists :append
+		       :if-exists :supersede
 		       :if-does-not-exist :create)
     (with-standard-io-syntax
       (dolist (item (events event-stream)) (prin1 item out)))))
