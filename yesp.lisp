@@ -13,12 +13,21 @@
   payload
   version)
 
-(defstruct event-stream
-  name
-  events)
+(defclass event-stream ()
+  ((name
+    :initarg :name
+    :accessor name)
+   (events
+    :initarg :events
+    :initform nil
+    :accessor events)))
 
-(defun push-event (event stream)
-  (push event (event-stream-events stream)))
+(defmethod version ((stream event-stream))
+  (event-version (car (last (events stream)))))
+
+;; TODO: Check version
+(defmethod push-event ((s event-stream) (e event))
+  (push e (slot-value s 'events)))
 
 (defun event-stream-path (name)
   (make-pathname
@@ -27,12 +36,12 @@
    :type "lisp"))
 
 (defun save-event-stream (event-stream)
-  (with-open-file (out (event-stream-path (event-stream-name event-stream))
+  (with-open-file (out (event-stream-path (name event-stream))
 		       :direction :output
 		       :if-exists :append
 		       :if-does-not-exist :create)
     (with-standard-io-syntax
-      (dolist (item (event-stream-events event-stream)) (prin1 item out)))))
+      (dolist (item (events event-stream)) (prin1 item out)))))
 
 (defun event-stream-files ()
   (list-directory *db-dir*))
@@ -44,10 +53,10 @@
        collect form)))
 
 (defun load-event-stream (event-stream)
-  (setf (gethash (event-stream-name event-stream) *db*) event-stream))
+  (setf (gethash (name event-stream) *db*) event-stream))
 
 (defun event-stream-from-file (path)
-  (make-event-stream
+  (make-instance 'event-stream
    :name (read-from-string (pathname-name path))
    :events (read-event-stream-file path)))
 
@@ -73,8 +82,8 @@
 
 (defvar *xml-server*)
 
-(defun start-rpc-server ()
-  (setq *xml-server* (s-xml-rpc:start-xml-rpc-server :port 8080)))
+(defun start-rpc-server (port)
+  (setq *xml-server* (s-xml-rpc:start-xml-rpc-server :port port)))
 
 (defun stop-rpc-server ()
   (stop-server *xml-server*))
