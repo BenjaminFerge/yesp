@@ -100,17 +100,21 @@
 	     using (hash-value value)
 	     collect (list key value))))
 
-(defvar *xml-server*)
+(defvar *xml-server* nil)
 
 (defun start-rpc-server (port)
+  (stop-rpc-server)
   (setq *xml-server* (s-xml-rpc:start-xml-rpc-server :port port)))
 
 (defun stop-rpc-server ()
   (stop-server *xml-server*))
 
-(defun s-xml-rpc-exports::|lisp.GCD| (m n)
-  (gcd m n))
+(defun s-xml-rpc-exports::|yesp.getDatabase| ()
+       "123")
 
 (defun s-xml-rpc-exports::|lisp.getTime| ()
-  (multiple-value-list (get-decoded-time)))
+       (multiple-value-list (get-decoded-time)))
+
+(defun event-stream-to-xml (event-stream)
+  (make-xml-element :name :stream :attributes `((:name . ,(symbol-name (name event-stream))))))
 
