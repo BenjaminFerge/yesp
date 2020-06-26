@@ -3,4 +3,5 @@
 (defpackage #:yesp
   (:use #:cl
 	#:com.gigamonkeys.pathnames
-	#:s-xml-rpc))
+	#:s-xml-rpc
+	#:uuid))

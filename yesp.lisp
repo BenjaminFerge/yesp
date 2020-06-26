@@ -9,12 +9,16 @@
 		  ".yesp.d" "streams")))
 
 (defstruct event
+  id
   action
   payload
   version)
 
 (defclass event-stream ()
-  ((name
+  ((id
+    :initform (make-v4-uuid)
+    :accessor id)
+   (name
     :initarg :name
     :accessor name)
    (events
@@ -28,7 +32,13 @@
       (event-version last-event))))
 
 (defmethod valid-p ((e event) (s event-stream))
-  (= (version s) (1- (event-version e))))
+  (or
+   (and (= (list-length (events s)) 0) (= (event-version e) 1))
+   (= (version s) (1- (event-version e)))))
+
+(defmethod create-event ((s event-stream) &key action payload version)
+  (let ((e (make-event :id (make-v4-uuid) :action action :payload payload :version version)))
+    (push-event e s)))
 
 (defmethod push-event ((e event) (s event-stream))
   (unless (valid-p e s)
