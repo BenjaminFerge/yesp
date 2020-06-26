@@ -23,7 +23,9 @@
     :accessor events)))
 
 (defmethod version ((stream event-stream))
-  (event-version (car (last (events stream)))))
+  (let ((last-event (car (last (events stream)))))
+    (when last-event
+      (event-version last-event))))
 
 (defmethod valid-p ((e event) (s event-stream))
   (= (version s) (1- (event-version e))))
