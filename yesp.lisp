@@ -16,6 +16,7 @@
 
 (defclass event-stream ()
   ((id
+    :initarg :id
     :initform (make-v4-uuid)
     :accessor id)
    (name
@@ -71,12 +72,13 @@
        collect form)))
 
 (defun load-event-stream (event-stream)
-  (setf (gethash (name event-stream) *db*) event-stream))
+  (push event-stream (gethash (name event-stream) *db*)))
 
 (defun event-stream-from-file (path)
   (make-instance 'event-stream
-   :name (read-from-string (pathname-name path))
-   :events (read-event-stream-file path)))
+		 :id (read-from-string (pathname-name path))
+		 :name (intern (car (last (pathname-directory path))))
+		 :events (read-event-stream-file path)))
 
 (defun load-event-stream-from-file (path)
   (load-event-stream (event-stream-from-file path)))
