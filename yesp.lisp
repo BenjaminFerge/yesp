@@ -28,8 +28,9 @@
 
 (defmethod version ((stream event-stream))
   (let ((last-event (car (last (events stream)))))
-    (when last-event
-      (event-version last-event))))
+    (if last-event
+	(event-version last-event)
+	0)))
 
 (defmethod valid-p ((e event) (s event-stream))
   (or
@@ -45,14 +46,15 @@
     (error (format nil "Event version mismatch!~%Expected: ~a, got: ~a" (1+ (version s)) (event-version e))))
   (setf (slot-value s 'events) (nreverse (push e (slot-value s 'events)))))
 
-(defun event-stream-path (name)
-  (make-pathname
-   :defaults *db-dir*
-   :name name
-   :type "lisp"))
+(defun event-stream-path (event-stream)
+  (merge-pathnames (make-pathname
+		    :directory `(:relative ,(symbol-name (name event-stream)))
+		    :name (format nil "~a" (id event-stream))
+		    :type "lisp")
+		   *db-dir*))
 
 (defun save-event-stream (event-stream)
-  (with-open-file (out (event-stream-path (name event-stream))
+  (with-open-file (out (event-stream-path event-stream)
 		       :direction :output
 		       :if-exists :supersede
 		       :if-does-not-exist :create)
