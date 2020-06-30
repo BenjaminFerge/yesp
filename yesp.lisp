@@ -116,5 +116,10 @@
        (multiple-value-list (get-decoded-time)))
 
 (defun event-stream-to-xml (event-stream)
-  (make-xml-element :name :stream :attributes `((:name . ,(symbol-name (name event-stream))))))
+  (make-xml-element :name :stream :attributes `((:name . ,(symbol-name (name event-stream))) (:version . ,(write-to-string (version event-stream)))) :children (mapcar #'event-to-xml (events event-stream))))
 
+(defun event-stream-print-xml (event-stream)
+  (print-xml (event-stream-to-xml event-stream) :pretty t :input-type :xml-struct))
+
+(defun event-to-xml (e)
+  (make-xml-element :name :event :attributes `((:action . ,(symbol-name (event-action e))) (:version . ,(write-to-string (event-version e))) (:payload . ,(format nil "~a" (event-payload e))))))
