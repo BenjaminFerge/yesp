@@ -116,10 +116,14 @@
        (multiple-value-list (get-decoded-time)))
 
 (defun event-stream-to-xml (event-stream)
-  (make-xml-element :name :stream :attributes `((:name . ,(symbol-name (name event-stream))) (:version . ,(write-to-string (version event-stream)))) :children (mapcar #'event-to-xml (events event-stream))))
+  (make-xml-element :name :stream :attributes `((:id . ,(symbol-name (id event-stream))) (:name . ,(symbol-name (name event-stream))) (:version . ,(write-to-string (version event-stream)))) :children (mapcar #'event-to-xml (events event-stream))))
 
 (defun event-stream-print-xml (event-stream)
   (print-xml (event-stream-to-xml event-stream) :pretty t :input-type :xml-struct))
 
 (defun event-to-xml (e)
-  (make-xml-element :name :event :attributes `((:action . ,(symbol-name (event-action e))) (:version . ,(write-to-string (event-version e))) (:payload . ,(format nil "~a" (event-payload e))))))
+  (make-xml-element :name :event :attributes `((:id . ,(symbol-name (event-id e))) (:action . ,(symbol-name (event-action e))) (:version . ,(write-to-string (event-version e))) (:payload . ,(format nil "~a" (event-payload e))))))
+
+;; TODO: Nest streams inside DOMs per stream name
+(defun db->xml ()
+  (make-xml-element :name :data :attributes `((:count . ,(write-to-string (hash-table-count *db*)))) :children (let (result) (maphash #'(lambda (k v) (setf result (mapcar #'event-stream-to-xml v))) *db*) result)))
