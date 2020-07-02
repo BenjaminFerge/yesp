@@ -121,8 +121,17 @@
 (defun s-xml-rpc-exports::|eventStreams.count| ()
        (alist->plist (count-event-streams)))
 
+(defun s-xml-rpc-exports::|eventStreams.getByName| (name)
+       (mapcar #'event-stream->xml-rpc-struct (gethash (intern name) *db*)))
+
+(defun s-xml-rpc-exports::|eventStreams.getById| (id)
+       (event-stream->xml-rpc-struct (find-event-stream-by-id id)))
+
 (defun s-xml-rpc-exports::|lisp.getTime| ()
        (multiple-value-list (get-decoded-time)))
+
+(defun find-event-stream-by-id (id)
+  (loop named outer for values being the hash-values of *db* do (loop for evs in values do (uuid= (eql id (id evs)) (return-from outer evs)))))
 
 (defun event-stream-to-xml (event-stream)
   (make-xml-element :name :stream :attributes `((:id . ,(symbol-name (id event-stream))) (:name . ,(symbol-name (name event-stream))) (:version . ,(write-to-string (version event-stream)))) :children (mapcar #'event-to-xml (events event-stream))))
@@ -143,6 +152,7 @@
 (defun event-stream->xml-rpc-struct (event-stream)
   (xml-rpc-struct
    :type 'event-stream
+   :id (id event-stream)
    :name (name event-stream)
    :version (version event-stream)
    :events (mapcar #'event->xml-rpc-struct (events event-stream))))
