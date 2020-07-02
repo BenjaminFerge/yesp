@@ -138,9 +138,6 @@
 			 :version version
 			 :payload payload))))
 
-(defun s-xml-rpc-exports::|test| (x)
-       (xml-rpc-struct :asd nil))
-
 (defun s-xml-rpc-exports::|lisp.getTime| ()
        (multiple-value-list (get-decoded-time)))
 
@@ -159,7 +156,7 @@
 (defun event->xml-rpc-struct (event)
   (xml-rpc-struct
    :type 'event
-   :id (event-id event)
+   :id (format nil "~a" (event-id event))
    :action (event-action event)
    :payload (event-payload event)
    :version (event-version event)))
@@ -167,7 +164,7 @@
 (defun event-stream->xml-rpc-struct (event-stream)
   (xml-rpc-struct
    :type 'event-stream
-   :id (id event-stream)
+   :id (format nil "~a" (id event-stream))
    :name (name event-stream)
    :version (version event-stream)
    :events (mapcar #'event->xml-rpc-struct (events event-stream))))
