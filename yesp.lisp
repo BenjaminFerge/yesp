@@ -127,6 +127,20 @@
 (defun s-xml-rpc-exports::|eventStreams.getById| (id)
        (event-stream->xml-rpc-struct (find-event-stream-by-id id)))
 
+(defun s-xml-rpc-exports::|eventStreams.create| (name)
+       (event-stream->xml-rpc-struct (make-instance 'event-stream :name (intern (string-upcase name)))))
+
+(defun s-xml-rpc-exports::|eventStreams.pushEvent| (stream-id action version payload)
+       (let ((evs (find-event-stream-by-id stream-id)))
+	 (when evs
+	   (create-event evs
+			 :action (intern (string-upcase action))
+			 :version version
+			 :payload payload))))
+
+(defun s-xml-rpc-exports::|test| (x)
+       (xml-rpc-struct :asd nil))
+
 (defun s-xml-rpc-exports::|lisp.getTime| ()
        (multiple-value-list (get-decoded-time)))
 
@@ -145,6 +159,7 @@
 (defun event->xml-rpc-struct (event)
   (xml-rpc-struct
    :type 'event
+   :id (event-id event)
    :action (event-action event)
    :payload (event-payload event)
    :version (event-version event)))
