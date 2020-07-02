@@ -109,8 +109,17 @@
 (defun stop-rpc-server ()
   (stop-server *xml-server*))
 
-(defun s-xml-rpc-exports::|yesp.getDatabase| ()
-       "123")
+(defun count-event-streams ()
+  (loop for k being the hash-keys in *db* using (hash-value v) collecting k into names collecting (length v) into stream-count finally (return (pairlis names stream-count))))
+
+(defun alist->plist (alist)
+  (loop for pair in alist with result finally (return result) do (setf (getf result (intern (symbol-name (car pair)) "KEYWORD")) (cdr pair))))
+
+(defun s-xml-rpc-exports::|yesp.reload| ()
+       (load-db))
+
+(defun s-xml-rpc-exports::|eventStreams.count| ()
+       (alist->plist (count-event-streams)))
 
 (defun s-xml-rpc-exports::|lisp.getTime| ()
        (multiple-value-list (get-decoded-time)))
@@ -124,6 +133,20 @@
 (defun event-to-xml (e)
   (make-xml-element :name :event :attributes `((:id . ,(symbol-name (event-id e))) (:action . ,(symbol-name (event-action e))) (:version . ,(write-to-string (event-version e))) (:payload . ,(format nil "~a" (event-payload e))))))
 
+(defun event->xml-rpc-struct (event)
+  (xml-rpc-struct
+   :type 'event
+   :action (event-action event)
+   :payload (event-payload event)
+   :version (event-version event)))
+
+(defun event-stream->xml-rpc-struct (event-stream)
+  (xml-rpc-struct
+   :type 'event-stream
+   :name (name event-stream)
+   :version (version event-stream)
+   :events (mapcar #'event->xml-rpc-struct (events event-stream))))
+
 (defun db->xml ()
   (make-xml-element
    :name :data
@@ -135,7 +158,7 @@
 		    (push
 		     (make-xml-element
 		      :name :aggregate
-		      :attributes `((:name . ,(symbol-name k)))
+		      :attributes `((:type . ,(symbol-name k)))
 		      :children (mapcar #'event-stream-to-xml v))
 		     result))
 		*db*)
