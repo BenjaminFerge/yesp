@@ -40,11 +40,19 @@
 
 (defmethod create-event ((s event-stream) &key action payload version)
   (let ((e (make-event :id (make-v4-uuid) :action action :payload payload :version version)))
-    (push-event e s)))
+    (restart-case (push-event e s)
+      (silence-version-mismatch () nil)
+      (print-version-mismatch (c) (format t "Event version mismatch!~%Expected: ~a, got: ~a" (expected c) (got c))))))
+
+(define-condition event-version-mismatch (error)
+  ((got :initarg :got :reader got)
+   (expected :initarg :expected :reader expected)))
+
+					;(error (format nil "Event version mismatch!~%Expected: ~a, got: ~a" (1+ (version s)) (event-version e)))
 
 (defmethod push-event ((e event) (s event-stream))
   (unless (valid-p e s)
-    (error (format nil "Event version mismatch!~%Expected: ~a, got: ~a" (1+ (version s)) (event-version e))))
+    (error 'event-version-mismatch :expected (1+ (version s)) :got (event-version e)))
   (setf (slot-value s 'events) (nreverse (push e (slot-value s 'events)))))
 
 (defun event-stream-path (event-stream)
@@ -102,9 +110,14 @@
 
 (defvar *xml-server* nil)
 
+(defun return-rpc-error (c)
+  (format t "Yay, hiba! Expected: ~a, got:~a" (expected c) (got c))
+  (invoke-restart 'return-rpc-error))
+
 (defun start-rpc-server (port)
-  (stop-rpc-server)
-  (setq *xml-server* (s-xml-rpc:start-xml-rpc-server :port port)))
+  (when *xml-server* (stop-rpc-server))
+  (handler-bind ((event-version-mismatch #'return-rpc-error))
+    (setq *xml-server* (s-xml-rpc:start-xml-rpc-server :port port))))
 
 (defun stop-rpc-server ()
   (stop-server *xml-server*))
