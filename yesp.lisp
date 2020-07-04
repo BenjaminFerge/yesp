@@ -41,14 +41,15 @@
 (defmethod create-event ((s event-stream) &key action payload version)
   (let ((e (make-event :id (make-v4-uuid) :action action :payload payload :version version)))
     (restart-case (push-event e s)
-      (silence-version-mismatch () nil)
-      (print-version-mismatch (c) (format t "Event version mismatch!~%Expected: ~a, got: ~a" (expected c) (got c))))))
+      (accept-next-version () (create-event s :action action :payload payload :version (1+ (version s)))))))
 
 (define-condition event-version-mismatch (error)
   ((got :initarg :got :reader got)
-   (expected :initarg :expected :reader expected)))
-
-					;(error (format nil "Event version mismatch!~%Expected: ~a, got: ~a" (1+ (version s)) (event-version e)))
+   (expected :initarg :expected :reader expected))
+  (:report (lambda (condition stream)
+	     (format stream "Event version mismatch!~%Expected: ~a, got: ~a"
+		     (expected condition)
+		     (got condition)))))
 
 (defmethod push-event ((e event) (s event-stream))
   (unless (valid-p e s)
