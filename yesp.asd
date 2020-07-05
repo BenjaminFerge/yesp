@@ -10,4 +10,9 @@
 	       #:s-xml-rpc
 	       #:uuid)
   :components ((:file "package")
-               (:file "yesp")))
+               (:file "yesp")
+	       (:file "utils")
+	       (:file "database")
+	       (:file "rpc")
+	       (:file "xml")
+	       (:file "projection")))
