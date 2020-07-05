@@ -54,7 +54,8 @@
 (defmethod push-event ((e event) (s event-stream))
   (unless (valid-p e s)
     (error 'event-version-mismatch :expected (1+ (version s)) :got (event-version e)))
-  (setf (slot-value s 'events) (nreverse (push e (slot-value s 'events)))))
+  (setf (slot-value s 'events) (nreverse (push e (slot-value s 'events))))
+  (save-event-stream s))
 
 (defun event-stream-path (event-stream)
   (merge-pathnames (make-pathname
