@@ -64,12 +64,14 @@
 		   *db-dir*))
 
 (defun save-event-stream (event-stream)
-  (with-open-file (out (event-stream-path event-stream)
-		       :direction :output
-		       :if-exists :supersede
-		       :if-does-not-exist :create)
-    (with-standard-io-syntax
-      (dolist (item (events event-stream)) (prin1 item out)))))
+  (let ((path (event-stream-path event-stream)))
+    (ensure-directories-exist path)
+    (with-open-file (out path
+			 :direction :output
+			 :if-exists :supersede
+			 :if-does-not-exist :create)
+      (with-standard-io-syntax
+	(dolist (item (events event-stream)) (prin1 item out))))))
 
 (defun event-stream-files ()
   (list-directory *db-dir*))
@@ -135,6 +137,7 @@
        (reload-db))
 
 (defun s-xml-rpc-exports::|eventStreams.count| ()
+       (reload-db)
        (alist->plist (count-event-streams)))
 
 (defun xml-missing-args (&rest args)
@@ -142,34 +145,59 @@
 
 (defun s-xml-rpc-exports::|eventStreams.getByName| (&optional (name nil name-supplied-p))
        (if name-supplied-p
-	   (mapcar #'event-stream->xml-rpc-struct (gethash (intern name) *db*))
+	   (progn
+	     (reload-db)
+	     (mapcar #'event-stream->xml-rpc-struct (gethash (intern name) *db*)))
 	   (xml-missing-args :name)))
 
 (defun s-xml-rpc-exports::|eventStreams.getById| (&optional (id nil id-supplied-p))
        (if id-supplied-p
-	   (event-stream->xml-rpc-struct (find-event-stream-by-id id))
+	   (progn
+	     (reload-db)
+	     (event-stream->xml-rpc-struct (find-event-stream-by-id id)))
 	   (xml-missing-args :id)))
 
 (defun s-xml-rpc-exports::|eventStreams.create| (&optional (name nil name-supplied-p))
        (if name-supplied-p
-	   (event-stream->xml-rpc-struct (make-instance 'event-stream :name (intern (string-upcase name))))
+	   (event-stream->xml-rpc-struct
+	    (let ((event-stream
+		   (make-instance 'event-stream
+				  :name (intern (string-upcase name)))))
+	      (save-event-stream event-stream)
+	      event-stream))
 	   (xml-missing-args :name)))
 
 (defun s-xml-rpc-exports::|eventStreams.pushEvent| (&optional (stream-id nil stream-id-supplied-p) (action nil action-supplied-p) (version nil version-supplied-p) (payload nil payload-supplied-p))
        (unless (and stream-id-supplied-p action-supplied-p version-supplied-p payload-supplied-p)
 	 (return-from s-xml-rpc-exports::|eventStreams.pushEvent| (xml-missing-args :stream-id :action :version :payload)))
-       (let ((evs (find-event-stream-by-id stream-id)))
-	 (when evs
-	   (create-event evs
-			 :action (intern (string-upcase action))
-			 :version version
-			 :payload payload))))
+       (reload-db)
+       (let ((evs (find-event-stream-by-str-id stream-id)))
+	 (if evs
+	     (handler-case 
+		 (progn (create-event evs
+				      :action (intern (string-upcase action))
+				      :version version
+				      :payload payload)
+			'ok)
+	       (event-version-mismatch (c)
+		 (format nil "~a" c))
+	       (error (c)
+		 (declare (ignore c))
+		 'unknown-error))
+	   (format nil "Event stream not found with id: ~a" stream-id))))
 
 (defun s-xml-rpc-exports::|lisp.getTime| ()
        (multiple-value-list (get-decoded-time)))
 
-(defun find-event-stream-by-id (id)
-  (loop named outer for values being the hash-values of *db* do (loop for evs in values do (uuid= (eql id (id evs)) (return-from outer evs)))))
+(defun find-event-stream-by-str-id (id)
+  (handler-case (make-uuid-from-string id)
+    (error (c)
+      (declare (ignore c))
+      (return-from find-event-stream-by-str-id)))
+  (loop named outer for values being the hash-values of *db* do
+       (loop for evs in values do
+     	    (when (eq (intern id) (id evs))
+	      (return-from outer evs)))))
 
 (defun event-stream-to-xml (event-stream)
   (make-xml-element :name :stream :attributes `((:id . ,(symbol-name (id event-stream))) (:name . ,(symbol-name (name event-stream))) (:version . ,(write-to-string (version event-stream)))) :children (mapcar #'event-to-xml (events event-stream))))
