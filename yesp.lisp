@@ -111,14 +111,12 @@
 
 (defvar *xml-server* nil)
 
-(defun return-rpc-error (c)
-  (format t "Yay, hiba! Expected: ~a, got:~a" (expected c) (got c))
-  (invoke-restart 'return-rpc-error))
-
 (defun start-rpc-server (port)
   (when *xml-server* (stop-rpc-server))
-  (handler-bind ((event-version-mismatch #'return-rpc-error))
-    (setq *xml-server* (s-xml-rpc:start-xml-rpc-server :port port))))
+  (handler-case (setq *xml-server* (s-xml-rpc:start-xml-rpc-server :port port))
+    (error (c)
+      (format t "We caught a condition.~&")
+      (values 0 c))))
 
 (defun stop-rpc-server ()
   (stop-server *xml-server*))
@@ -129,22 +127,37 @@
 (defun alist->plist (alist)
   (loop for pair in alist with result finally (return result) do (setf (getf result (intern (symbol-name (car pair)) "KEYWORD")) (cdr pair))))
 
+(defun reload-db ()
+  (setf *db* (make-hash-table))
+  (load-db))
+
 (defun s-xml-rpc-exports::|yesp.reload| ()
-       (load-db))
+       (reload-db))
 
 (defun s-xml-rpc-exports::|eventStreams.count| ()
        (alist->plist (count-event-streams)))
 
-(defun s-xml-rpc-exports::|eventStreams.getByName| (name)
-       (mapcar #'event-stream->xml-rpc-struct (gethash (intern name) *db*)))
+(defun xml-missing-args (&rest args)
+  (format nil "Missing arguments: ~{~a~^, ~}" args))
 
-(defun s-xml-rpc-exports::|eventStreams.getById| (id)
-       (event-stream->xml-rpc-struct (find-event-stream-by-id id)))
+(defun s-xml-rpc-exports::|eventStreams.getByName| (&optional (name nil name-supplied-p))
+       (if name-supplied-p
+	   (mapcar #'event-stream->xml-rpc-struct (gethash (intern name) *db*))
+	   (xml-missing-args :name)))
 
-(defun s-xml-rpc-exports::|eventStreams.create| (name)
-       (event-stream->xml-rpc-struct (make-instance 'event-stream :name (intern (string-upcase name)))))
+(defun s-xml-rpc-exports::|eventStreams.getById| (&optional (id nil id-supplied-p))
+       (if id-supplied-p
+	   (event-stream->xml-rpc-struct (find-event-stream-by-id id))
+	   (xml-missing-args :id)))
 
-(defun s-xml-rpc-exports::|eventStreams.pushEvent| (stream-id action version payload)
+(defun s-xml-rpc-exports::|eventStreams.create| (&optional (name nil name-supplied-p))
+       (if name-supplied-p
+	   (event-stream->xml-rpc-struct (make-instance 'event-stream :name (intern (string-upcase name))))
+	   (xml-missing-args :name)))
+
+(defun s-xml-rpc-exports::|eventStreams.pushEvent| (&optional (stream-id nil stream-id-supplied-p) (action nil action-supplied-p) (version nil version-supplied-p) (payload nil payload-supplied-p))
+       (unless (and stream-id-supplied-p action-supplied-p version-supplied-p payload-supplied-p)
+	 (return-from s-xml-rpc-exports::|eventStreams.pushEvent| (xml-missing-args :stream-id :action :version :payload)))
        (let ((evs (find-event-stream-by-id stream-id)))
 	 (when evs
 	   (create-event evs
