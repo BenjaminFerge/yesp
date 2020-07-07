@@ -8,7 +8,8 @@
   :serial t
   :depends-on (#:pcl-pathnames
 	       #:s-xml-rpc
-	       #:uuid)
+	       #:uuid
+	       #:mito)
   :components ((:file "package")
                (:file "yesp")
 	       (:file "utils")
